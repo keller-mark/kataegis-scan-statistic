@@ -3,11 +3,15 @@ import math
 from sympy import FiniteSet
 
 
-class PoissonScanStatistic():
+class BernoulliScanStatistic():
 
   """
+
     H_0 : p = q
     H_1 : p > q, zone Z in window
+
+    mu(A) = integer for all subsets A of space G
+
 
     n_Z = observed number of points in zone Z
     n_G = total number of observed points
@@ -16,8 +20,6 @@ class PoissonScanStatistic():
 
     p = probability that each individual within the zone is a point
     q = probability that each individual outside the zone is a point
-
-
 
   """
 
