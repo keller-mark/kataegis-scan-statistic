@@ -1,11 +1,14 @@
 import numpy as np
+from scipy.special import comb
 import math
-from sympy import FiniteSet
+from flanking import Flanking
+#from sympy import FiniteSet
 
 
 class BernoulliScanStatistic():
 
   """
+    Reference: https://www.satscan.org/papers/k-cstm1997.pdf
 
     H_0 : p = q
     H_1 : p > q, zone Z in window
@@ -23,73 +26,69 @@ class BernoulliScanStatistic():
 
   """
 
-  def __init__(self):
-    pass
+  def __init__(self, observed_points):
+    self.observed_points = observed_points
+    self.n_G = len(observed_points)
+    self.mu_G = np.mean(observed_points)
 
-
-  """
-  Probability of n_G number of points in the study area
-  """
-  def prob_n_G(n_G, p, q, mu_G, mu_Z):
-    return (
-        np.exp( -p*mu_Z - q*(mu_G - mu_Z) )
-      * np.power(
-          (p*mu_Z + q*(mu_G - mu_Z)), 
-          n_G
-        )
-    ) / math.factorial(n_G)
-
-  """
-  pdf f(x) of specific point being observed at location x
-  """
-  def pdf(x, p, q, mu_G, mu_Z, x_in_Z):
-    mu_x = 0 # TODO: ???
-    if x_in_Z:
-      return (p*mu_x) / (p*mu_Z + q*(mu_G - mu_Z))
-    else:
-      return (q*mu_x) / (p*mu_Z + q*(mu_G - mu_Z))
 
   """
   Likelihood function L(Z, p, q)
   """
-  def likelihood(Z, p, q, n_G, mu_G, mu_Z):
-    xs_in_Z = [] # TODO: array of x's in Z
-    xs_not_in_Z = [] # TODO: array of x's not in Z
+  def likelihood(self, Z, p, q):
+    n_Z = len(Z)
+    n_G = self.n_G
+
+    mu_Z = np.mean(Z)
+    mu_G = self.mu_G
 
     return (
-        prob_n_G(n_G, p, q, mu_G, mu_Z)
-      * np.prod(
-          np.apply_along_axis(
-            pdf, # function
-            0, # axis
-            xs_in_Z, # array
-            p, q, mu_G, mu_Z, True # additional args
-          ) 
-        )
-      * np.prod(
-          np.apply_along_axis(
-            pdf, # function
-            0, # axis
-            xs_not_in_Z, # array
-            p, q, mu_G, mu_Z, False # additional args
-          ) 
-        )
+      np.power(p, n_Z)
+      * np.power((1 - p), mu_Z - n_Z)
+      * np.power(q, n_G - n_Z)
+      * np.power((1 - q), (mu_G - mu_Z) - (n_G - n_Z))
     )
 
-  def test_statistic(Z):
-    supremum = FiniteSet(*Z).sup
+  def likelihood_null(self):
+    n_G = self.n_G
+    mu_G = self.mu_G
     return (
-      (supremum * likelihood(Z, p, q, n_G, mu_G, mu_Z)) /
-      (
-        (np.exp(-n_G) / math.factorial(n_G)) 
-      * np.power(n_G / mu_G, n_G)
-      * np.prod(
-          np.apply_along_axis(
-            np.mean,
-            0,
-            Z
-          ) 
-        )
-      )
+      np.power((n_G / mu_G), n_G) 
+      * np.power(((mu_G - n_G) / mu_G), (mu_G - n_G))
     )
+
+  
+  """
+  Find the distribution of the test statistic using Monte Carlo simulation
+
+  Using underlying measure mu, obtain replications of the data set generated under H_0,
+    conditioning on total number of points n_G.
+
+  With 9999 replications, test is significant at alpha = 0.05
+    if test statistic for real data set is among 500 highest values 
+    of the test statistic from the replications
+
+  """
+  def monte_carlo(self):
+    n_G = self.n_G
+    mu_G = self.mu_G
+
+    def binomial_pmf(n, p, k):
+      # n = number of trials
+      # p = success probability in each trial
+      # k = number of successes
+      return comb(n, k) * np.power(p, k) * np.power((1 - p), (n - k))
+
+    n_trials = 9999
+    alpha = 0.05
+    n_top = math.ceil(n_trials * alpha)
+
+    for _ in range(0, n_trials):
+      print(binomial_pmf(n_G, mu_G, ))
+    
+
+  
+
+
+
 
