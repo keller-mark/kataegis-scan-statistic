@@ -2,7 +2,6 @@ import numpy as np
 from scipy.special import comb
 import math
 from flanking import Flanking
-#from sympy import FiniteSet
 
 
 class BernoulliScanStatistic():
@@ -26,10 +25,17 @@ class BernoulliScanStatistic():
 
   """
 
-  def __init__(self, observed_points):
-    self.observed_points = observed_points
-    self.n_G = len(observed_points)
-    self.mu_G = np.mean(observed_points)
+  def __init__(self, mutation_df):
+    self.flanking = Flanking('hg')
+    self.chromosomes = self.flanking.get_chromosome_lengths()
+    print(self.chromosomes)
+    self.chromosome = self.chromosomes.keys()[0]
+    print(self.chromosome)
+    
+    self.mutation_df = mutation_df
+    self.n_G = self.chromosomes[self.chromosome]
+    self.mu_G = len(mutation_df.loc["chr" + mutation_df['Chromosome'] == self.chromosome])
+    print(self.mu_G)
 
 
   """
