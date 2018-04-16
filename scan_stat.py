@@ -1,5 +1,4 @@
 import numpy as np
-from scipy.special import comb
 import math
 from flanking import Flanking
 
@@ -12,13 +11,12 @@ class BernoulliScanStatistic():
     H_0 : p = q
     H_1 : p > q, zone Z in window
 
-    mu(A) = integer for all subsets A of space G
-
+    mu(A) = mean for all subsets A of space G
 
     n_Z = observed number of points in zone Z
     n_G = total number of observed points
 
-    point = individual in a state of kataegis or not
+    point = mutated base pair or not
 
     p = probability that each individual within the zone is a point
     q = probability that each individual outside the zone is a point
@@ -27,15 +25,16 @@ class BernoulliScanStatistic():
 
   def __init__(self, mutation_df):
     self.flanking = Flanking('hg')
-    self.chromosomes = self.flanking.get_chromosome_lengths()
-    print(self.chromosomes)
-    self.chromosome = self.chromosomes.keys()[0]
-    print(self.chromosome)
-    
+    self.chr_lens = self.flanking.get_chromosome_lengths()
     self.mutation_df = mutation_df
-    self.n_G = self.chromosomes[self.chromosome]
-    self.mu_G = len(mutation_df.loc["chr" + mutation_df['Chromosome'] == self.chromosome])
-    print(self.mu_G)
+
+    # total number of base pairs in human genome
+    self.n_G = np.sum(list(self.chr_lens.values()))
+
+    n_mutations = len(mutation_df)
+    n_donors = len(mutation_df['Donor ID'].unique())
+    # mean mutation frequency
+    self.mu_G = (n_mutations / n_donors) / self.n_G
 
 
   """
@@ -79,22 +78,11 @@ class BernoulliScanStatistic():
     n_G = self.n_G
     mu_G = self.mu_G
 
-    def binomial_pmf(n, p, k):
-      # n = number of trials
-      # p = success probability in each trial
-      # k = number of successes
-      return comb(n, k) * np.power(p, k) * np.power((1 - p), (n - k))
-
     n_trials = 9999
     alpha = 0.05
     n_top = math.ceil(n_trials * alpha)
 
-    for _ in range(0, n_trials):
-      print(binomial_pmf(n_G, mu_G, ))
-    
-
-  
-
-
-
-
+    simulations = np.random.binomial(n_G, mu_G, (n_trials))
+    top = np.partition(simulations, n_trials - n_top)
+    top_range = [np.amin(top), np.amax(top)]
+    print(top_range)
