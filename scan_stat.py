@@ -1,6 +1,6 @@
 import numpy as np
 import math
-from flanking import Flanking
+from hg import HG
 
 
 class ScanStatistic():
@@ -24,9 +24,16 @@ class ScanStatistic():
   """
 
   def __init__(self, mutation_df):
-    self.flanking = Flanking('hg')
-    self.chr_lens = self.flanking.get_chromosome_lengths()
+    self.hg = HG('hg')
+    self.chr_lens = self.hg.get_chromosome_lengths()
+
     self.mutation_df = mutation_df
+
+    def add_absolute_pos_column(df):
+      chr_lens_cum = self.hg.get_chromosomes_cumulative()
+      df['Absolute Position'] = df.apply(lambda row: chr_lens_cum["chr" + row['Chromosome']] + int(row['Chromosome Start']), axis=1)
+      return df
+    self.mutation_df = add_absolute_pos_column(self.mutation_df)
 
     # total number of base pairs in human genome
     self.n_G = np.sum(list(self.chr_lens.values()))
@@ -56,7 +63,6 @@ class ScanStatistic():
     n_top = math.ceil(n_trials * alpha)
 
     simulations = np_rand_fun(*args, (n_trials))
-    print(simulations)
     top = np.partition(simulations, n_trials - n_top)
     top_range = [np.amin(top), np.amax(top)]
     print(top_range)
