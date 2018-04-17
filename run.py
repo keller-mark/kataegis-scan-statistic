@@ -2,7 +2,7 @@ import pandas as pd
 
 import argparse
 import os
-from scan_stat import BernoulliScanStatistic
+from scan_stat import BernoulliScanStatistic, PoissonScanStatistic
 
 parser = argparse.ArgumentParser(description='Scan statistic to identify kataegis')
 
@@ -20,4 +20,7 @@ for input_filename in input_filenames:
 
 bss = BernoulliScanStatistic(df)
 bss.monte_carlo()
+
+pss = PoissonScanStatistic(df)
+pss.monte_carlo()
 

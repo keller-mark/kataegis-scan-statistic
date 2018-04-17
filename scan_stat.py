@@ -3,7 +3,7 @@ import math
 from flanking import Flanking
 
 
-class BernoulliScanStatistic():
+class ScanStatistic():
 
   """
     Reference: https://www.satscan.org/papers/k-cstm1997.pdf
@@ -35,7 +35,36 @@ class BernoulliScanStatistic():
     n_donors = len(mutation_df['Donor ID'].unique())
     # mean mutation frequency
     self.mu_G = (n_mutations / n_donors) / self.n_G
+  
+  """
+  Find the distribution of the test statistic using Monte Carlo simulation
 
+  Using underlying measure mu, obtain replications of the data set generated under H_0,
+    conditioning on total number of points n_G.
+
+  With 9999 replications, test is significant at alpha = 0.05
+    if test statistic for real data set is among 500 highest values 
+    of the test statistic from the replications
+
+  """
+  def monte_carlo(self, np_rand_fun, args):
+    n_G = self.n_G
+    mu_G = self.mu_G
+
+    n_trials = 9999
+    alpha = 0.05
+    n_top = math.ceil(n_trials * alpha)
+
+    simulations = np_rand_fun(*args, (n_trials))
+    print(simulations)
+    top = np.partition(simulations, n_trials - n_top)
+    top_range = [np.amin(top), np.amax(top)]
+    print(top_range)
+
+class BernoulliScanStatistic(ScanStatistic):
+
+  def __init__(self, mutation_df):
+    super().__init__(mutation_df)
 
   """
   Likelihood function L(Z, p, q)
@@ -62,27 +91,13 @@ class BernoulliScanStatistic():
       * np.power(((mu_G - n_G) / mu_G), (mu_G - n_G))
     )
 
-  
-  """
-  Find the distribution of the test statistic using Monte Carlo simulation
-
-  Using underlying measure mu, obtain replications of the data set generated under H_0,
-    conditioning on total number of points n_G.
-
-  With 9999 replications, test is significant at alpha = 0.05
-    if test statistic for real data set is among 500 highest values 
-    of the test statistic from the replications
-
-  """
   def monte_carlo(self):
-    n_G = self.n_G
-    mu_G = self.mu_G
+    return super().monte_carlo(np.random.binomial, args=[self.n_G, self.mu_G])
 
-    n_trials = 9999
-    alpha = 0.05
-    n_top = math.ceil(n_trials * alpha)
+class PoissonScanStatistic(ScanStatistic):
 
-    simulations = np.random.binomial(n_G, mu_G, (n_trials))
-    top = np.partition(simulations, n_trials - n_top)
-    top_range = [np.amin(top), np.amax(top)]
-    print(top_range)
+  def __init__(self, mutation_df):
+    super().__init__(mutation_df)
+
+  def monte_carlo(self):
+    return super().monte_carlo(np.random.poisson, args=[self.mu_G])
