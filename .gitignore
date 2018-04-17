@@ -1,2 +1,4 @@
 .DS_Store
+.snakemake
+.ipynb_checkpoints
 __pycache__
