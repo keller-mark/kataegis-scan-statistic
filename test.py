@@ -26,11 +26,11 @@ class Test(unittest.TestCase):
     cls.bss = BernoulliScanStatistic(cls.df)
 
   def test_init(self):
-    self.assertEqual(Test.pss.n_G, 3095693983)
-    self.assertEqual(Test.bss.n_G, 3095693983)
+    self.assertEqual(Test.pss.n_G, 249250621)
+    self.assertEqual(Test.bss.n_G, 249250621)
 
-    self.assertAlmostEqual(Test.pss.mu_G, float(3.444671439492425e-06))
-    self.assertAlmostEqual(Test.bss.mu_G, float(3.444671439492425e-06))
+    self.assertAlmostEqual(Test.pss.mu_G, float(4.278283683252548e-05))
+    self.assertAlmostEqual(Test.bss.mu_G, float(4.278283683252548e-05))
   
   def test_monte_carlo_bernoulli(self):
     Test.bss.monte_carlo()

@@ -6,7 +6,18 @@ from hg import HG
 class ScanStatistic():
 
   """
-    Reference: https://www.satscan.org/papers/k-cstm1997.pdf
+    Motivation:
+    "...Since kataegis is observed at different rates in different cancer types, 
+    a tool that can dynamically optimize kataegis detection per cancer type
+    and assess significance of kataegis events would be of a great use..."
+
+    "...uses a sliding window (of fixed width) approach to test deviation of 
+    observed SNV trinucleotide content and inter-mutational distance from expected 
+    by chance alone." 
+
+
+    Scan Statistic Reference: 
+    https://www.satscan.org/papers/k-cstm1997.pdf
 
     H_0 : p = q
     H_1 : p > q, zone Z in window
@@ -24,23 +35,19 @@ class ScanStatistic():
   """
 
   def __init__(self, mutation_df):
-    self.hg = HG('hg')
-    self.chr_lens = self.hg.get_chromosome_lengths()
+    hg = HG('hg')
+    chromosome = "1"
+    chr_len = hg.get_chromosome_length("chr" + chromosome)
 
-    self.mutation_df = mutation_df
+    self.mutation_df = mutation_df.loc[mutation_df['Chromosome'] == chromosome]
+    print(self.mutation_df)
 
-    def add_absolute_pos_column(df):
-      chr_lens_cum = self.hg.get_chromosomes_cumulative()
-      df['Absolute Position'] = df.apply(lambda row: chr_lens_cum["chr" + row['Chromosome']] + int(row['Chromosome Start']), axis=1)
-      return df
-    self.mutation_df = add_absolute_pos_column(self.mutation_df)
-
-    # total number of base pairs in human genome
-    self.n_G = np.sum(list(self.chr_lens.values()))
+    # total number of base pairs for chromosome
+    self.n_G = chr_len
 
     n_mutations = len(mutation_df)
     n_donors = len(mutation_df['Donor ID'].unique())
-    # mean mutation frequency
+    # mean mutation frequency for chromosome
     self.mu_G = (n_mutations / n_donors) / self.n_G
   
   """

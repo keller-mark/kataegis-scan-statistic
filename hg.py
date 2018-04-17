@@ -13,7 +13,7 @@ class HG():
     self.assemblies["hg38"] = twobitreader.TwoBitFile(os.path.join(hg_dir, "hg38.2bit"))
 
 
-  def flanking(self, assembly_version, chrom_shortname, chrom_start, chrom_end):
+  def get(self, assembly_version, chrom_shortname, chrom_start, chrom_end):
     if(assembly_version == "GRCh38"):
       assembly_name = "hg38"
       assembly = self.assemblies[assembly_name]
