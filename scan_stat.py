@@ -6,6 +6,11 @@ POS = 'Chromosome Start'
 CHR = 'Chromosome'
 DONOR_ID = 'Donor ID'
 
+def running_mean(x, N):
+  # https://stackoverflow.com/questions/13728392/moving-average-or-running-mean
+  cumsum = np.cumsum(np.insert(x, 0, 0)) 
+  return (cumsum[N:] - cumsum[:-N]) / float(N)
+
 class ScanStatistic():
 
   """
@@ -40,19 +45,37 @@ class ScanStatistic():
   def __init__(self, mut_df):
     hg = HG('hg')
     
+    # Example donor ID and chromosome
+    donor_id = 'DO51965'
     chromosome = "1"
-    self.chr_len = hg.get_chromosome_length("chr" + chromosome)
+    chr_len = hg.get_chromosome_length("chr" + chromosome)
 
-    self.mut_df = mut_df.loc[mut_df[CHR] == chromosome]
-    print(self.mut_df)
+    chr_pos_array = np.arange(0, chr_len)
 
-    # total number of base pairs for chromosome
-    self.n_G = self.chr_len
+    self.n_Z = 1000 # window size
+
+    
+    mut_df = mut_df.loc[mut_df[CHR] == chromosome]
+    donor_df = mut_df.loc[mut_df[DONOR_ID] == donor_id]
+
+    all_mut_pos_array = mut_df.as_matrix(columns=[POS])
+    donor_mut_pos_array = donor_df.as_matrix(columns=[POS])
+
+    
+    G = np.isin(chr_pos_array, all_mut_pos_array)
+    donor_G = np.isin(chr_pos_array, donor_mut_pos_array)
+
+    self.overall_windows = running_mean(G, self.n_Z)
+    self.donor_windows = running_mean(donor_G, self.n_Z)
+
+
 
     self.n_mutations = len(mut_df)
     self.n_donors = len(mut_df[DONOR_ID].unique())
     # mean mutation frequency for chromosome
     self.mu_G = (self.n_mutations / self.n_donors) / self.n_G
+    # total number of base pairs for chromosome
+    self.n_G = hg.get_chromosome_length("chr" + chromosome)
 
     self.L_0 = self.likelihood_null()
   
@@ -87,14 +110,12 @@ class ScanStatistic():
 
   """
   def monte_carlo(self):
-    n_G = self.n_G
-    mu_G = self.mu_G
 
     n_trials = 9999
     alpha = 0.05
     n_top = math.ceil(n_trials * alpha)
 
-    poisson_lambda = self.mu_G * self.n_G
+    poisson_lambda = 0 # TODO: lambda = likelihood ratio
     simulations = np.random.poisson(poisson_lambda, (n_trials))
     top = np.partition(simulations, n_trials - n_top)
     top_range = [np.amin(top), np.amax(top)]
