@@ -2,6 +2,9 @@ import numpy as np
 import math
 from hg import HG
 
+POS = 'Chromosome Start'
+CHR = 'Chromosome'
+DONOR_ID = 'Donor ID'
 
 class ScanStatistic():
 
@@ -34,24 +37,46 @@ class ScanStatistic():
 
   """
 
-  def __init__(self, mutation_df):
+  def __init__(self, mut_df):
     hg = HG('hg')
+    
     chromosome = "1"
-    chr_len = hg.get_chromosome_length("chr" + chromosome)
+    self.chr_len = hg.get_chromosome_length("chr" + chromosome)
 
-    self.mutation_df = mutation_df.loc[mutation_df['Chromosome'] == chromosome]
-    print(self.mutation_df)
+    self.mut_df = mut_df.loc[mut_df[CHR] == chromosome]
+    print(self.mut_df)
 
     # total number of base pairs for chromosome
-    self.n_G = chr_len
+    self.n_G = self.chr_len
 
-    n_mutations = len(mutation_df)
-    n_donors = len(mutation_df['Donor ID'].unique())
+    self.n_mutations = len(mut_df)
+    self.n_donors = len(mut_df[DONOR_ID].unique())
     # mean mutation frequency for chromosome
-    self.mu_G = (n_mutations / n_donors) / self.n_G
+    self.mu_G = (self.n_mutations / self.n_donors) / self.n_G
+
+    self.L_0 = self.likelihood_null()
+  
+  def get_window(self, size, offset, donor_id='DO51965'):
+    min_pos = offset
+    max_pos = offset + size
+    window_df = self.mut_df.loc[(self.mut_df[POS] >= min_pos) & (self.mut_df[POS] < max_pos)]
+    n_window_mutations = len(window_df)
+
+    # TODO: use np.convolve to compute these means at the same time for all windows
+    p = (n_window_mutations / self.n_donors) / size
+    q = ((self.n_mutations - n_window_mutations) / self.n_donors) / (self.chr_len - size)
+
+    n_window_mutations_donor = len(window_df.loc[window_df[DONOR_ID] == donor_id])
+    return {
+      'p': p,
+      'q': q,
+      'n_Z': size,
+      'mu_Z': (n_window_mutations_donor / size)
+    }
   
   """
-  Find the distribution of the test statistic using Monte Carlo simulation
+  Find the distribution of the test statistic
+    of the likelihood ratio (lambda) using Monte Carlo simulation
 
   Using underlying measure mu, obtain replications of the data set generated under H_0,
     conditioning on total number of points n_G.
@@ -61,7 +86,7 @@ class ScanStatistic():
     of the test statistic from the replications
 
   """
-  def monte_carlo(self, np_rand_fun, args):
+  def monte_carlo(self):
     n_G = self.n_G
     mu_G = self.mu_G
 
@@ -69,25 +94,29 @@ class ScanStatistic():
     alpha = 0.05
     n_top = math.ceil(n_trials * alpha)
 
-    simulations = np_rand_fun(*args, (n_trials))
+    poisson_lambda = self.mu_G * self.n_G
+    simulations = np.random.poisson(poisson_lambda, (n_trials))
     top = np.partition(simulations, n_trials - n_top)
     top_range = [np.amin(top), np.amax(top)]
     print(top_range)
 
 class BernoulliScanStatistic(ScanStatistic):
 
-  def __init__(self, mutation_df):
-    super().__init__(mutation_df)
+  def __init__(self, mut_df):
+    super().__init__(mut_df)
 
   """
   Likelihood function L(Z, p, q)
   """
-  def likelihood(self, Z, p, q):
-    n_Z = len(Z)
+  def likelihood(self, Z):
+    n_Z = Z['n_Z']
     n_G = self.n_G
 
-    mu_Z = np.mean(Z)
+    mu_Z = Z['mu_Z']
     mu_G = self.mu_G
+
+    p = Z['p']
+    q = Z['q']
 
     return (
       np.power(p, n_Z)
@@ -103,14 +132,21 @@ class BernoulliScanStatistic(ScanStatistic):
       np.power((n_G / mu_G), n_G) 
       * np.power(((mu_G - n_G) / mu_G), (mu_G - n_G))
     )
-
-  def monte_carlo(self):
-    return super().monte_carlo(np.random.binomial, args=[self.n_G, self.mu_G])
+  
+  def likelihood_ratio(self, Z):
+    return (self.likelihood(Z) / self.L_0)
+  
+  def run(self):
+    start = 0
+    end = self.chr_len
+    window_size = 1000
+    for i in range(0, end, window_size):
+      Z = self.get_window(size=window_size, offset=i)
+      if Z['mu_Z'] > 0:
+        l = self.likelihood_ratio(Z)
+        print(Z, l)
 
 class PoissonScanStatistic(ScanStatistic):
 
-  def __init__(self, mutation_df):
-    super().__init__(mutation_df)
-
-  def monte_carlo(self):
-    return super().monte_carlo(np.random.poisson, args=[self.mu_G])
+  def __init__(self, mut_df):
+    super().__init__(mut_df)
